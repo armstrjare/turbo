@@ -202,10 +202,10 @@ export class Visit {
     this.adapter.visitRequestFinished(this)
   }
 
-  loadResponse() {
+  async loadResponse() {
     if (this.response) {
       const { statusCode, responseHTML } = this.response
-      this.render(async () => {
+      await this.render(async () => {
         if (this.shouldCacheSnapshot) this.cacheSnapshot()
         if (this.view.renderPromise) await this.view.renderPromise
 

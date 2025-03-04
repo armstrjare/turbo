@@ -230,19 +230,19 @@ export class FrameController {
     markAsBusy(formElement, this.#findFrameElement(formElement))
   }
 
-  formSubmissionSucceededWithResponse(formSubmission, response) {
+  async formSubmissionSucceededWithResponse(formSubmission, response) {
     const frame = this.#findFrameElement(formSubmission.formElement, formSubmission.submitter)
 
     frame.delegate.proposeVisitIfNavigatedWithAction(frame, getVisitAction(formSubmission.submitter, formSubmission.formElement, frame))
-    frame.delegate.loadResponse(response)
+    await frame.delegate.loadResponse(response)
 
     if (!formSubmission.isSafe) {
       session.clearCache()
     }
   }
 
-  formSubmissionFailedWithResponse(formSubmission, fetchResponse) {
-    this.element.delegate.loadResponse(fetchResponse)
+  async formSubmissionFailedWithResponse(formSubmission, fetchResponse) {
+    await this.element.delegate.loadResponse(fetchResponse)
     session.clearCache()
   }
 
@@ -315,7 +315,7 @@ export class FrameController {
       this.complete = true
       session.frameRendered(fetchResponse, this.element)
       session.frameLoaded(this.element)
-      await this.fetchResponseLoaded(fetchResponse)
+      this.fetchResponseLoaded(fetchResponse)
     } else if (this.#willHandleFrameMissingFromResponse(fetchResponse)) {
       this.#handleFrameMissingFromResponse(fetchResponse)
     }

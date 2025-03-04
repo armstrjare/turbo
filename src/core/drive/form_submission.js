@@ -137,9 +137,9 @@ export class FormSubmission {
     this.result = { success: response.succeeded, fetchResponse: response }
   }
 
-  requestSucceededWithResponse(request, response) {
+  async requestSucceededWithResponse(request, response) {
     if (response.clientError || response.serverError) {
-      this.delegate.formSubmissionFailedWithResponse(this, response)
+      await this.delegate.formSubmissionFailedWithResponse(this, response)
       return
     }
 
@@ -151,13 +151,13 @@ export class FormSubmission {
     } else {
       this.state = FormSubmissionState.receiving
       this.result = { success: true, fetchResponse: response }
-      this.delegate.formSubmissionSucceededWithResponse(this, response)
+      await this.delegate.formSubmissionSucceededWithResponse(this, response)
     }
   }
 
-  requestFailedWithResponse(request, response) {
+  async requestFailedWithResponse(request, response) {
     this.result = { success: false, fetchResponse: response }
-    this.delegate.formSubmissionFailedWithResponse(this, response)
+    await this.delegate.formSubmissionFailedWithResponse(this, response)
   }
 
   requestErrored(request, error) {
