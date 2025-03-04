@@ -14,6 +14,7 @@ import {
   pathname,
   propertyForSelector,
   readEventLogs,
+  readMutationLogs,
   scrollPosition,
   scrollToSelector,
   searchParams
@@ -108,15 +109,15 @@ test("a frame whose src references itself does not infinitely loop", async ({ pa
 test("following a link driving a frame toggles the [aria-busy=true] attribute", async ({ page }) => {
   await page.click("#hello a")
 
-  assert.equal(await nextAttributeMutationNamed(page, "frame", "busy"), "", "sets [busy] on the #frame")
+  assert.equal(await nextAttributeMutationNamed(page, "frame", "busy", 'turbo:click'), "", "sets [busy] on the #frame")
   assert.equal(
-    await nextAttributeMutationNamed(page, "frame", "aria-busy"),
+    await nextAttributeMutationNamed(page, "frame", "aria-busy", 'turbo:click'),
     "true",
     "sets [aria-busy=true] on the #frame"
   )
-  assert.equal(await nextAttributeMutationNamed(page, "frame", "busy"), null, "removes [busy] on the #frame")
+  assert.equal(await nextAttributeMutationNamed(page, "frame", "busy", 'turbo:frame-load'), null, "removes [busy] on the #frame")
   assert.equal(
-    await nextAttributeMutationNamed(page, "frame", "aria-busy"),
+    await nextAttributeMutationNamed(page, "frame", "aria-busy", 'turbo:frame-load'),
     null,
     "removes [aria-busy] from the #frame"
   )
@@ -656,7 +657,7 @@ test("navigating pushing URL state from a frame navigation fires events", async 
   await page.click("#link-outside-frame-action-advance")
 
   assert.equal(
-    await nextAttributeMutationNamed(page, "frame", "aria-busy"),
+    await nextAttributeMutationNamed(page, "frame", "aria-busy", 'turbo:click'),
     "true",
     "sets aria-busy on the <turbo-frame>"
   )
@@ -664,16 +665,17 @@ test("navigating pushing URL state from a frame navigation fires events", async 
   await nextEventOnTarget(page, "frame", "turbo:before-fetch-response")
   await nextEventOnTarget(page, "frame", "turbo:frame-render")
   await nextEventOnTarget(page, "frame", "turbo:frame-load")
-  assert.notOk(await nextAttributeMutationNamed(page, "frame", "aria-busy"), "removes aria-busy from the <turbo-frame>")
+  assert.notOk(await nextAttributeMutationNamed(page, "frame", "aria-busy", 'turbo:frame-load'), "removes aria-busy from the <turbo-frame>")
 
-  assert.equal(await nextAttributeMutationNamed(page, "html", "aria-busy"), "true", "sets aria-busy on the <html>")
   await nextEventOnTarget(page, "html", "turbo:before-visit")
   await nextEventOnTarget(page, "html", "turbo:visit")
+  assert.equal(await nextAttributeMutationNamed(page, "html", "aria-busy", 'turbo:visit'), "true", "sets aria-busy on the <html>")
+
   await nextEventOnTarget(page, "html", "turbo:before-cache")
   await nextEventOnTarget(page, "html", "turbo:before-render")
   await nextEventOnTarget(page, "html", "turbo:render")
   await nextEventOnTarget(page, "html", "turbo:load")
-  assert.notOk(await nextAttributeMutationNamed(page, "html", "aria-busy"), "removes aria-busy from the <html>")
+  assert.notOk(await nextAttributeMutationNamed(page, "html", "aria-busy", 'turbo:load'), "removes aria-busy from the <html>")
 })
 
 test("navigating a frame with a form[method=get] that does not redirect still updates the [src]", async ({

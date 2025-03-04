@@ -96,7 +96,29 @@ export async function nextPageRefresh(page, timeout = 500) {
   return sleep(pageRefreshDebouncePeriod + timeout)
 }
 
-export async function nextEventNamed(page, eventName, expectedDetail = {}) {
+export async function seekNextEvent(page, eventNames) {
+  eventNames = [].concat(eventNames)
+  let record
+  while (!record) {
+    const records = await readEventLogs(page, 1)
+    record = records.find(([name]) => eventNames.includes(name))
+  }
+  return record
+}
+
+export async function nextEventsNamed(page, eventNames) {
+  eventNames = [].concat(eventNames)
+  while (eventNames.length) {
+    const nextEvent = await seekNextEvent(page, eventNames)
+    if (nextEvent[0] != eventNames[0]) {
+      throw new Error(`Expected event ${eventNames[0]} to have occurred before ${nextEvent[0]}`)
+    }
+    eventNames.splice(0, 1)
+  }
+  return true
+}
+
+export async function nextEventNamed(page, eventName, expectedDetail = {}, skipEvents = []) {
   let record
   while (!record) {
     const records = await readEventLogs(page, 1)
@@ -141,13 +163,22 @@ export async function noNextBodyMutation(page) {
   return !records.some((record) => !!record)
 }
 
-export async function nextAttributeMutationNamed(page, elementId, attributeName) {
+export async function nextAttributeMutationNamed(page, elementId, attributeName, eventName) {
   let record
   while (!record) {
     const records = await readMutationLogs(page, 1)
     record = records.find(([name, id]) => name == attributeName && id == elementId)
   }
+
   const attributeValue = record[2]
+  const lastEvent = record[3]
+
+  if (eventName && lastEvent[0] != eventName) {
+    throw new Error(
+      `Expected event ${eventName} to have ocurred before attribute mutation ${attributeName} on element ${elementId}, but was ${lastEvent[0]}`
+    )
+  }
+
   return attributeValue
 }
 

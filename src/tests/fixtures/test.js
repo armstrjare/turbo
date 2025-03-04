@@ -44,9 +44,10 @@
   window.mutationLogs = []
 
   new MutationObserver((mutations) => {
+    const lastEvent = window.eventLogs[window.eventLogs.length - 1]
     for (const { attributeName, target } of mutations.filter(({ type }) => type == "attributes")) {
       if (target instanceof Element) {
-        window.mutationLogs.push([attributeName, target.id, target.getAttribute(attributeName)])
+        window.mutationLogs.push([attributeName, target.id, target.getAttribute(attributeName), lastEvent])
       }
     }
   }).observe(document, { subtree: true, childList: true, attributes: true })

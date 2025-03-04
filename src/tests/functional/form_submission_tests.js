@@ -9,6 +9,7 @@ import {
   nextBeat,
   nextBody,
   nextEventNamed,
+  nextEventsNamed,
   nextEventOnTarget,
   noNextEventNamed,
   outerHTMLForSelector,
@@ -120,12 +121,12 @@ test("standard POST form submission with redirect response", async ({ page }) =>
   assert.equal(await visitAction(page), "advance")
   assert.equal(getSearchParam(page.url(), "greeting"), "Hello from a redirect")
   assert.equal(
-    await nextAttributeMutationNamed(page, "html", "aria-busy"),
+    await nextAttributeMutationNamed(page, "html", "aria-busy", 'turbo:visit'),
     "true",
     "sets [aria-busy] on the document element"
   )
   assert.equal(
-    await nextAttributeMutationNamed(page, "html", "aria-busy"),
+    await nextAttributeMutationNamed(page, "html", "aria-busy", 'turbo:load'),
     null,
     "removes [aria-busy] from the document element"
   )
@@ -137,14 +138,17 @@ test("sets aria-busy on the form element during a form submission", async ({ pag
 
   await nextEventNamed(page, "turbo:submit-start")
   assert.equal(
-    await nextAttributeMutationNamed(page, "standard-form", "aria-busy"),
+    await nextAttributeMutationNamed(page, "standard-form", "aria-busy", 'turbo:submit-start'),
     "true",
     "sets [aria-busy] on the form element"
   )
-
-  await nextEventNamed(page, "turbo:submit-end")
+  await nextEventsNamed(page, [
+    "turbo:before-fetch-response",
+    "turbo:submit-end",
+    "turbo:load"
+  ])
   assert.equal(
-    await nextAttributeMutationNamed(page, "standard-form", "aria-busy"),
+    await nextAttributeMutationNamed(page, "standard-form", "aria-busy", 'turbo:submit-end'),
     null,
     "removes [aria-busy] from the form element"
   )
@@ -695,12 +699,12 @@ test("frame POST form targeting frame submission", async ({ page }) => {
   assert.ok(fetchOptions.headers["Accept"].includes("text/vnd.turbo-stream.html"))
   assert.equal("frame", fetchOptions.headers["Turbo-Frame"])
 
-  await nextEventNamed(page, "turbo:before-fetch-response")
-
-  assert.ok(await formSubmitEnded(page), "fires turbo:submit-end")
-
-  await nextEventNamed(page, "turbo:frame-render")
-  await nextEventNamed(page, "turbo:frame-load")
+  await nextEventsNamed(page, [
+    "turbo:before-fetch-response",
+    "turbo:frame-render",
+    "turbo:frame-load",
+    "turbo:submit-end"
+  ])
 
   const otherEvents = await readEventLogs(page)
   assert.equal(otherEvents.length, 0, "no more events")
@@ -713,12 +717,12 @@ test("frame POST form targeting frame toggles submitter's [disabled] attribute",
   await page.click("#targets-frame-post-form-submit")
 
   assert.equal(
-    await nextAttributeMutationNamed(page, "targets-frame-post-form-submit", "disabled"),
+    await nextAttributeMutationNamed(page, "targets-frame-post-form-submit", "disabled", 'turbo:submit-start'),
     "",
     "sets [disabled] on the submitter"
   )
   assert.equal(
-    await nextAttributeMutationNamed(page, "targets-frame-post-form-submit", "disabled"),
+    await nextAttributeMutationNamed(page, "targets-frame-post-form-submit", "disabled", 'turbo:submit-end'),
     null,
     "removes [disabled] from the submitter"
   )
@@ -750,12 +754,12 @@ test("frame GET form targeting frame submission", async ({ page }) => {
   assert.notOk(fetchOptions.headers["Accept"].includes("text/vnd.turbo-stream.html"))
   assert.equal("frame", fetchOptions.headers["Turbo-Frame"])
 
-  await nextEventNamed(page, "turbo:before-fetch-response")
-
-  assert.ok(await formSubmitEnded(page), "fires turbo:submit-end")
-
-  await nextEventNamed(page, "turbo:frame-render")
-  await nextEventNamed(page, "turbo:frame-load")
+  await nextEventsNamed(page, [
+    "turbo:before-fetch-response",
+    "turbo:frame-render",
+    "turbo:frame-load",
+    "turbo:submit-end"
+  ])
 
   const otherEvents = await readEventLogs(page)
   assert.equal(otherEvents.length, 0, "no more events")
@@ -894,12 +898,14 @@ test("frame form submission within a frame submits the Turbo-Frame header", asyn
 test("invalid frame form submission with unprocessable content status", async ({ page }) => {
   await page.click("#frame form.unprocessable_content input[type=submit]")
 
-  assert.ok(await formSubmitStarted(page), "fires turbo:submit-start")
-  await nextEventNamed(page, "turbo:before-fetch-request")
-  await nextEventNamed(page, "turbo:before-fetch-response")
-  assert.ok(await formSubmitEnded(page), "fires turbo:submit-end")
-  await nextEventNamed(page, "turbo:frame-render")
-  await nextEventNamed(page, "turbo:frame-load")
+  await nextEventsNamed(page, [
+    "turbo:before-fetch-request",
+    "turbo:submit-start",
+    "turbo:before-fetch-response",
+    "turbo:frame-render",
+    "turbo:frame-load",
+    "turbo:submit-end"
+  ])
 
   const otherEvents = await readEventLogs(page)
   assert.equal(otherEvents.length, 0, "no more events")
@@ -912,12 +918,14 @@ test("invalid frame form submission with unprocessable content status", async ({
 test("invalid frame form submission with internal server error status", async ({ page }) => {
   await page.click("#frame form.internal_server_error input[type=submit]")
 
-  assert.ok(await formSubmitStarted(page), "fires turbo:submit-start")
-  await nextEventNamed(page, "turbo:before-fetch-request")
-  await nextEventNamed(page, "turbo:before-fetch-response")
-  assert.ok(await formSubmitEnded(page), "fires turbo:submit-end")
-  await nextEventNamed(page, "turbo:frame-render")
-  await nextEventNamed(page, "turbo:frame-load")
+  await nextEventsNamed(page, [
+    "turbo:before-fetch-request",
+    "turbo:submit-start",
+    "turbo:before-fetch-response",
+    "turbo:frame-render",
+    "turbo:frame-load",
+    "turbo:submit-end"
+  ])
 
   const otherEvents = await readEventLogs(page)
   assert.equal(otherEvents.length, 0, "no more events")
@@ -1041,6 +1049,7 @@ test("link method form submission dispatches events from a connected <form> elem
   await nextEventOnTarget(page, "a-form-link", "turbo:before-fetch-request")
   await nextEventOnTarget(page, "a-form-link", "turbo:submit-start")
   await nextEventOnTarget(page, "a-form-link", "turbo:before-fetch-response")
+  await nextEventOnTarget(page, "a-form-link", "turbo:fetch-request-error")
   await nextEventOnTarget(page, "a-form-link", "turbo:submit-end")
 
   assert.notOk(await hasSelector(page, "a-form-link"), "the <form> is removed")
